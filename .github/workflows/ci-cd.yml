@@ -1,0 +1,57 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  id-token: write # lets the deploy job sign in to Azure with OIDC, no stored password
+
+env:
+  REGISTRY: sqlagentshivam.azurecr.io
+  IMAGE: sql-insight-agent
+  RESOURCE_GROUP: rg-sqlagent
+  CONTAINER_APP: sql-insight-agent
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run guardrail tests
+        run: pytest -q tests
+      - name: Build image
+        run: docker build -t "$IMAGE:${{ github.sha }}" .
+
+  deploy:
+    needs: test-and-build
+    # Runs only on pushes to main, and only once the Azure identity variables exist.
+    if: github.event_name == 'push' && vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sign in to Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push image tagged with the commit
+        run: |
+          az acr login --name "${REGISTRY%%.*}"
+          docker build -t "$REGISTRY/$IMAGE:${{ github.sha }}" .
+          docker push "$REGISTRY/$IMAGE:${{ github.sha }}"
+      - name: Roll out new revision
+        run: |
+          az extension add --name containerapp --upgrade --yes
+          az containerapp update \
+            --name "$CONTAINER_APP" \
+            --resource-group "$RESOURCE_GROUP" \
+            --image "$REGISTRY/$IMAGE:${{ github.sha }}"

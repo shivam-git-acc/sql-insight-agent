@@ -3,9 +3,11 @@ import os
 import psycopg
 from dotenv import load_dotenv
 
+from app import guard
+
 load_dotenv()
 DATABASE_URL = os.environ["DATABASE_URL"]
-MAX_ROWS = 200
+STATEMENT_TIMEOUT = "5s"
 
 
 def get_schema() -> str:
@@ -17,15 +19,24 @@ def get_schema() -> str:
         ORDER BY table_name, ordinal_position
     """
     tables: dict[str, list[str]] = {}
-    with psycopg.connect(DATABASE_URL) as conn:
+    with psycopg.connect(DATABASE_URL, connect_timeout=10) as conn:
         for table, col, dtype in conn.execute(sql):
             tables.setdefault(table, []).append(f"{col} {dtype}")
     return "\n".join(f"{t}({', '.join(cols)})" for t, cols in tables.items())
 
 
-def run_query(sql: str) -> tuple[list[str], list[tuple]]:
-    # TODO (Day 2): connect as a read-only role and validate the SQL first.
-    with psycopg.connect(DATABASE_URL) as conn:
-        cur = conn.execute(sql)
+def run_query(sql: str) -> tuple[str, list[str], list[tuple]]:
+    """Validate and run a model-written query. Returns (executed_sql, columns, rows).
+
+    Raises guard.UnsafeQueryError if the query is rejected, or psycopg.Error
+    if the database rejects it.
+    """
+    safe_sql = guard.validate(sql)
+    with psycopg.connect(DATABASE_URL, connect_timeout=10) as conn:
+        # Second layer: even if validation missed something, the transaction
+        # cannot write, and a runaway query is cancelled.
+        conn.read_only = True
+        conn.execute(f"SET statement_timeout = '{STATEMENT_TIMEOUT}'")
+        cur = conn.execute(safe_sql)
         columns = [d.name for d in cur.description]
-        return columns, cur.fetchmany(MAX_ROWS)
+        return safe_sql, columns, cur.fetchall()
