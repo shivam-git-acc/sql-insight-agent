@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SQL Insight</title>
+  <link rel="preload" href="/static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="band">
+    <div class="band-inner">
+      <div class="brand">
+        <span class="mark" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 22 22"><rect x="2" y="12" width="4" height="8" rx="1.5"/><rect x="9" y="7" width="4" height="13" rx="1.5"/><rect x="16" y="2" width="4" height="18" rx="1.5"/></svg>
+        </span>
+        <span class="brand-name">SQL Insight</span>
+        <span class="brand-scope">Northwind sales data, read-only</span>
+      </div>
+
+      <form id="ask-form" class="ask" autocomplete="off">
+        <label for="question" class="ask-label">What would you like to know?</label>
+        <div class="ask-row">
+          <input id="question" name="question" type="text" minlength="3" maxlength="500" required
+                 placeholder="Which product categories earned the most in 1997?">
+          <button id="ask-button" type="submit">Ask</button>
+        </div>
+      </form>
+
+      <div class="examples" aria-label="Example questions">
+        <button type="button" class="example">Which 5 customers placed the most orders?</button>
+        <button type="button" class="example">Revenue after discounts by category in 1997</button>
+        <button type="button" class="example">How many orders were placed in each month of 1997?</button>
+        <button type="button" class="example">How many orders shipped late?</button>
+      </div>
+    </div>
+    <div id="progress" class="progress" hidden><span></span></div>
+  </header>
+
+  <div class="layout">
+    <aside class="history" aria-label="Your questions">
+      <h2 class="history-title">Your questions</h2>
+      <p id="history-empty" class="history-empty">Questions you ask appear here. Select one to see its answer again.</p>
+      <ol id="history-list" class="history-list"></ol>
+    </aside>
+
+    <main class="main">
+      <section id="welcome" class="welcome">
+        <h1>Ask in plain English, get the answer, the chart and the SQL behind it.</h1>
+        <p>The assistant can read these parts of the Northwind sales database. It cannot change anything.</p>
+        <ul class="tables">
+          <li><strong>Orders</strong> dates, freight, shipping</li>
+          <li><strong>Order lines</strong> quantities, prices, discounts</li>
+          <li><strong>Customers</strong> companies and countries</li>
+          <li><strong>Products</strong> prices, stock, categories</li>
+          <li><strong>Employees</strong> who handled each order</li>
+          <li><strong>Suppliers and shippers</strong></li>
+        </ul>
+      </section>
+
+      <section id="status" class="status" hidden aria-live="polite"></section>
+
+      <article id="result" class="result" hidden aria-live="polite">
+        <p id="asked" class="asked"></p>
+        <div id="answer" class="answer"></div>
+
+        <figure id="viz" class="viz" hidden>
+          <div class="viz-head">
+            <figcaption id="viz-title" class="viz-title"></figcaption>
+            <label id="measure-picker" class="measure" hidden>
+              Show
+              <select id="measure"></select>
+            </label>
+          </div>
+          <div id="stat" class="stat" hidden>
+            <span id="stat-value" class="stat-value"></span>
+            <span id="stat-label" class="stat-label"></span>
+          </div>
+          <div id="chart-box" class="chart-box" hidden>
+            <canvas id="chart" role="img"></canvas>
+          </div>
+          <p id="viz-note" class="viz-note" hidden></p>
+        </figure>
+
+        <div id="details" class="details">
+          <div class="tabs-row">
+            <div class="tabs" role="tablist" aria-label="Result details">
+              <button type="button" role="tab" id="tab-data" aria-controls="panel-data" aria-selected="true">Data <span id="row-count" class="count"></span></button>
+              <button type="button" role="tab" id="tab-sql" aria-controls="panel-sql" aria-selected="false" tabindex="-1">SQL</button>
+            </div>
+            <div class="actions">
+              <button type="button" id="download-csv" class="action">Download CSV</button>
+              <button type="button" id="copy-sql" class="action">Copy SQL</button>
+            </div>
+          </div>
+          <div id="panel-data" role="tabpanel" aria-labelledby="tab-data" class="panel">
+            <div class="table-wrap"><table id="table"></table></div>
+          </div>
+          <div id="panel-sql" role="tabpanel" aria-labelledby="tab-sql" class="panel" hidden>
+            <pre id="sql"></pre>
+          </div>
+        </div>
+
+        <p id="meta" class="meta"></p>
+      </article>
+    </main>
+  </div>
+
+  <script src="/static/vendor/chart.umd.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
